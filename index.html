@@ -1,134 +1,599 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>VR Workshop — Interactive Scene</title>
-    <meta name="description" content="A-Frame VR Workshop Demo — Meta Quest 3s">
-    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-  </head>
-  <body>
-    <a-scene>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VR Traffic Police Training Simulator – Kochi</title>
+  <meta name="description" content="Immersive VR traffic police training simulator built with A-Frame for Meta Quest. Train officers to manage intersections, spot violations, and issue fines.">
 
-      <!-- Assets -->
-      <a-assets>
-        <img id="wood" src="https://cdn.aframe.io/a-painter/images/wood.jpg">
-        <img id="floor" src="https://cdn.aframe.io/a-painter/images/floor.jpg">
-        <img id="city-sky" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/city.jpg">
-      </a-assets>
+  <!-- A-Frame 1.7 -->
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <!-- A-Frame Extras (for animation-mixer, movement-controls) -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
 
-      <!-- Camera + Controls (Desktop & VR) -->
-      <a-entity id="rig">
-        <a-entity camera position="0 1.6 0" look-controls wasd-controls>
-          <!-- Desktop mouse cursor -->
-          <a-cursor
-            color="#FFFFFF"
-            fuse="false"
-            raycaster="objects: .clickable; far: 20">
-          </a-cursor>
-        </a-entity>
+  <script src="script.js"></script>
 
-        <!-- VR Controllers -->
-        <a-entity
-          id="leftController"
-          meta-touch-controls="hand: left"
-          laser-controls="hand: left"
-          raycaster="objects: .clickable; far: 20"
-          line="color: cyan">
-        </a-entity>
-        <a-entity
-          id="rightController"
-          meta-touch-controls="hand: right"
-          laser-controls="hand: right"
-          raycaster="objects: .clickable; far: 20"
-          line="color: magenta">
-        </a-entity>
-      </a-entity>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
 
-      <!-- Lights -->
-      <a-light type="ambient" color="#BBB" intensity="0.5"></a-light>
-      <a-light type="directional" color="#FFF" intensity="0.8" position="-1 2 1"></a-light>
+    #ui-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
 
-      <!-- Scene Objects -->
-       <a-image src="https://raw.githubusercontent.com/alluringxstalwart/SourceYISL/main/Landscape.png" position="0 5 -10"
-      width="25" height="7.5"></a-image>
-    
-    <a-text value="Young Innovators STEM Lab" position="0 9.5 -10" align="center" color="white" font="mozillavr"
-      width="10" height="5" anchor="center">
+    #hud {
+      position: fixed;
+      top: 20px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      pointer-events: none;
+    }
+
+    .hud-card {
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 10px 22px;
+      color: #fff;
+      text-align: center;
+      min-width: 110px;
+    }
+    .hud-card .label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.7; }
+    .hud-card .value { font-size: 28px; font-weight: 700; margin-top: 2px; }
+    #score-val { color: #4ade80; }
+    #timer-val { color: #facc15; }
+    #fines-val { color: #f87171; }
+
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      z-index: 200;
+      pointer-events: all;
+    }
+
+    #start-screen .badge {
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      border-radius: 100px;
+      padding: 6px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+
+    #start-screen h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.1;
+      margin: 0 0 16px;
+      background: linear-gradient(90deg, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #start-screen p {
+      font-size: 1.1rem;
+      opacity: 0.7;
+      text-align: center;
+      max-width: 480px;
+      margin: 0 0 40px;
+      line-height: 1.6;
+    }
+
+    .btn-start {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 52px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      pointer-events: all;
+      letter-spacing: 1px;
+      box-shadow: 0 0 30px rgba(99,102,241,0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-start:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 50px rgba(99,102,241,0.8);
+    }
+
+    .instructions {
+      margin-top: 38px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 520px;
+    }
+    .instr-item {
+      background: rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .instr-icon { font-size: 1.4rem; }
+
+    #feedback-banner {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.85);
+      border-left: 4px solid #4ade80;
+      border-radius: 10px;
+      color: #fff;
+      padding: 14px 28px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 150;
+      min-width: 280px;
+      text-align: center;
+    }
+    #feedback-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #feedback-banner.violation { border-color: #f87171; }
+    #feedback-banner.info { border-color: #60a5fa; }
+
+    #end-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      pointer-events: all;
+    }
+    #end-screen.show { display: flex; }
+    #end-screen h2 { font-size: 2.5rem; margin-bottom: 8px; }
+    #end-screen .final-score { font-size: 5rem; font-weight: 900; color: #4ade80; margin: 10px 0; }
+    #end-screen .stat-row { display: flex; gap: 30px; margin: 20px 0 40px; }
+    #end-screen .stat { text-align: center; }
+    #end-screen .stat .sv { font-size: 1.8rem; font-weight: 700; }
+    #end-screen .stat .sl { font-size: 0.8rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-restart {
+      background: linear-gradient(90deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 44px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      box-shadow: 0 0 24px rgba(16,185,129,0.4);
+      transition: transform 0.15s;
+    }
+    .btn-restart:hover { transform: scale(1.05); }
+  </style>
+</head>
+
+<body>
+
+<!-- ───────────── START SCREEN ───────────── -->
+<div id="start-screen">
+  <div class="badge">🚔 Kerala Police – VR Training</div>
+  <h1>Traffic Police<br>Training Simulator</h1>
+  <p>Step into a busy Kochi intersection. Stop violating vehicles, issue fines, and control traffic flow. Works on desktop and Meta Quest 3.</p>
+  <button class="btn-start" id="btn-start">▶ Begin Training</button>
+
+  <div class="instructions">
+    <div class="instr-item">
+      <span class="instr-icon">🖱️</span>
+      <span><strong>Desktop:</strong> Gaze + click to stop/release cars</span>
+    </div>
+    <div class="instr-item">
+      <span class="instr-icon">🎮</span>
+      <span><strong>VR:</strong> Point laser at car + trigger button</span>
+    </div>
+    <div class="instr-item">
+      <span class="instr-icon">🚗</span>
+      <span>Stop cars that run <strong>red lights</strong> for bonus points</span>
+    </div>
+    <div class="instr-item">
+      <span class="instr-icon">⏱️</span>
+      <span>You have <strong>90 seconds</strong> per training session</span>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── HUD ───────────── -->
+<div id="hud" style="display:none;">
+  <div class="hud-card">
+    <div class="label">Score</div>
+    <div class="value" id="score-val">0</div>
+  </div>
+  <div class="hud-card">
+    <div class="label">Time</div>
+    <div class="value" id="timer-val">90</div>
+  </div>
+  <div class="hud-card">
+    <div class="label">Fines</div>
+    <div class="value" id="fines-val">0</div>
+  </div>
+</div>
+
+<!-- ───────────── FEEDBACK ───────────── -->
+<div id="feedback-banner"></div>
+
+<!-- ───────────── END SCREEN ───────────── -->
+<div id="end-screen">
+  <h2>🏁 Training Complete!</h2>
+  <div class="final-score" id="final-score">0</div>
+  <div class="stat-row">
+    <div class="stat"><div class="sv" id="final-fines">0</div><div class="sl">Fines Issued</div></div>
+    <div class="stat"><div class="sv" id="final-stops">0</div><div class="sl">Cars Stopped</div></div>
+    <div class="stat"><div class="sv" id="final-missed">0</div><div class="sl">Violations Missed</div></div>
+  </div>
+  <button class="btn-restart" id="btn-restart">🔄 Restart Training</button>
+</div>
+
+<!-- ───────────── A-FRAME SCENE ───────────── -->
+<a-scene
+  id="main-scene"
+  vr-mode-ui="enabled: true"
+  loading-screen="dotsColor: white; backgroundColor: #0f0c29"
+  renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
+  shadow="type: pcfsoft">
+
+  <!-- ── ASSETS ── -->
+  <a-assets timeout="20000">
+    <!-- Car model from BabylonJS public CDN -->
+    <a-asset-item id="car-model"
+      src="https://raw.githubusercontent.com/BabylonJS/Assets/master/meshes/car.glb"
+      crossorigin="anonymous">
+    </a-asset-item>
+    <!-- Ambulance / different vehicle (police scenario) -->
+    <a-asset-item id="car2-model"
+      src="https://raw.githubusercontent.com/BabylonJS/Assets/master/meshes/car.glb"
+      crossorigin="anonymous">
+    </a-asset-item>
+    <!-- Sounds (using HTML audio via JS) -->
+    <audio id="whistle-snd" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" crossorigin="anonymous" preload="auto"></audio>
+    <audio id="fine-snd" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" crossorigin="anonymous" preload="auto"></audio>
+    <audio id="violation-snd" src="https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" crossorigin="anonymous" preload="auto"></audio>
+  </a-assets>
+
+  <!-- ── SKY ── -->
+  <a-sky color="#87CEEB"></a-sky>
+
+  <!-- ── LIGHTING ── -->
+  <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
+  <a-light type="directional" color="#fff8e7" intensity="1.2" position="-5 15 10" cast-shadow="true"></a-light>
+  <a-light type="directional" color="#b0d4ff" intensity="0.3" position="5 8 -5"></a-light>
+
+  <!-- ── GROUND (grass) ── -->
+  <a-plane
+    position="0 0 0" rotation="-90 0 0"
+    width="200" height="200"
+    color="#4a7c59"
+    shadow="receive: true">
+  </a-plane>
+
+  <!-- ── MAIN ROAD (North–South) ── -->
+  <a-plane
+    position="0 0.01 0" rotation="-90 0 0"
+    width="10" height="200"
+    color="#374151"
+    shadow="receive: true">
+  </a-plane>
+
+  <!-- ── MAIN ROAD (East–West) ── -->
+  <a-plane
+    position="0 0.01 0" rotation="-90 0 90"
+    width="10" height="200"
+    color="#374151"
+    shadow="receive: true">
+  </a-plane>
+
+  <!-- ── ROAD CENTRE LINES (dashed yellow) ── -->
+  <!-- N-S centre dashes -->
+  <a-entity position="0 0.02 -20">
+    <a-plane position="0 0 30"  rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 20"  rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 10"  rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 0"   rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 -10" rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 -20" rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 -30" rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0 0 -40" rotation="-90 0 0" width="0.3" height="4" color="#facc15"></a-plane>
+  </a-entity>
+  <!-- E-W centre dashes -->
+  <a-entity position="-20 0.02 0">
+    <a-plane position="30  0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="20  0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="10  0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="0   0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="-10 0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="-20 0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="-30 0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+    <a-plane position="-40 0 0" rotation="-90 0 90" width="0.3" height="4" color="#facc15"></a-plane>
+  </a-entity>
+
+  <!-- ── ZEBRA CROSSING (at intersection) ── -->
+  <a-entity position="0 0.02 8">
+    <a-plane position="0 0 0"   rotation="-90 0 0" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="0 0 1.2" rotation="-90 0 0" width="10" height="0.6" color="#374151"></a-plane>
+    <a-plane position="0 0 2.2" rotation="-90 0 0" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="0 0 -2.2" rotation="-90 0 0" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="0 0 -1.2" rotation="-90 0 0" width="10" height="0.6" color="#374151"></a-plane>
+  </a-entity>
+  <a-entity position="8 0.02 0">
+    <a-plane position="0 0 0"   rotation="-90 0 90" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="1.2 0 0" rotation="-90 0 90" width="10" height="0.6" color="#374151"></a-plane>
+    <a-plane position="2.2 0 0" rotation="-90 0 90" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="-2.2 0 0" rotation="-90 0 90" width="10" height="1" color="#ffffff"></a-plane>
+    <a-plane position="-1.2 0 0" rotation="-90 0 90" width="10" height="0.6" color="#374151"></a-plane>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       TRAFFIC LIGHTS (4 corners of intersection)
+       ══════════════════════════════════════════════ -->
+
+  <!-- North-facing light (for S→N traffic) -->
+  <a-entity id="tl-north" position="-6 0 -7" traffic-light>
+    <!-- Pole -->
+    <a-cylinder position="0 2.5 0" radius="0.08" height="5" color="#555"></a-cylinder>
+    <!-- Housing -->
+    <a-box position="0 5.5 0" width="0.5" height="1.5" depth="0.5" color="#222"></a-box>
+    <!-- Red -->
+    <a-sphere id="tl-north-red"   position="0 6.1 0.3"  radius="0.18" color="#ff4444" material="emissive: #ff0000; emissiveIntensity: 0.8"></a-sphere>
+    <!-- Yellow -->
+    <a-sphere id="tl-north-yellow" position="0 5.5 0.3" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <!-- Green -->
+    <a-sphere id="tl-north-green"  position="0 4.9 0.3"  radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+  </a-entity>
+
+  <!-- South-facing light (for N→S traffic) -->
+  <a-entity id="tl-south" position="6 0 7" traffic-light="phase: 1">
+    <a-cylinder position="0 2.5 0" radius="0.08" height="5" color="#555"></a-cylinder>
+    <a-box position="0 5.5 0" width="0.5" height="1.5" depth="0.5" color="#222"></a-box>
+    <a-sphere id="tl-south-red"    position="0 6.1 -0.3" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <a-sphere id="tl-south-yellow" position="0 5.5 -0.3" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <a-sphere id="tl-south-green"  position="0 4.9 -0.3" radius="0.18" color="#4ade80" material="emissive: #00ff44; emissiveIntensity: 0.8"></a-sphere>
+  </a-entity>
+
+  <!-- East-facing light -->
+  <a-entity id="tl-east" position="-7 0 6" traffic-light="axis: EW; phase: 0">
+    <a-cylinder position="0 2.5 0" radius="0.08" height="5" color="#555"></a-cylinder>
+    <a-box position="0 5.5 0" width="0.5" height="1.5" depth="0.5" color="#222"></a-box>
+    <a-sphere id="tl-east-red"    position="-0.3 6.1 0" radius="0.18" color="#ff4444" material="emissive: #ff0000; emissiveIntensity: 0.8"></a-sphere>
+    <a-sphere id="tl-east-yellow" position="-0.3 5.5 0" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <a-sphere id="tl-east-green"  position="-0.3 4.9 0" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+  </a-entity>
+
+  <!-- West-facing light -->
+  <a-entity id="tl-west" position="7 0 -6" traffic-light="axis: EW; phase: 1">
+    <a-cylinder position="0 2.5 0" radius="0.08" height="5" color="#555"></a-cylinder>
+    <a-box position="0 5.5 0" width="0.5" height="1.5" depth="0.5" color="#222"></a-box>
+    <a-sphere id="tl-west-red"    position="0.3 6.1 0" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <a-sphere id="tl-west-yellow" position="0.3 5.5 0" radius="0.18" color="#555555" material="emissive: #000000"></a-sphere>
+    <a-sphere id="tl-west-green"  position="0.3 4.9 0" radius="0.18" color="#4ade80" material="emissive: #00ff44; emissiveIntensity: 0.8"></a-sphere>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       VEHICLES
+       ══════════════════════════════════════════════ -->
+
+  <!-- Car 1 – Lane 1, N→S (left lane), drives along +Z axis -->
+  <a-entity
+    id="car1"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="-2 0 -50"
+    rotation="0 0 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.09; lane: NS; startZ: -50; axis: NS; lightId: tl-north">
+  </a-entity>
+
+  <!-- Car 2 – Lane 2, N→S faster (right lane) -->
+  <a-entity
+    id="car2"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="-3.5 0 -70"
+    rotation="0 0 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.14; lane: NS; startZ: -70; axis: NS; lightId: tl-north">
+  </a-entity>
+
+  <!-- Car 3 – S→N direction, drives along -Z axis -->
+  <a-entity
+    id="car3"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="2 0 60"
+    rotation="0 180 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.11; lane: SN; startZ: 60; axis: SN; lightId: tl-south">
+  </a-entity>
+
+  <!-- Car 4 – E→W direction -->
+  <a-entity
+    id="car4"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="60 0 -2"
+    rotation="0 90 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.12; lane: EW; startX: 60; axis: EW; lightId: tl-east">
+  </a-entity>
+
+  <!-- Car 5 – W→E direction -->
+  <a-entity
+    id="car5"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="-60 0 2"
+    rotation="0 270 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.10; lane: WE; startX: -60; axis: WE; lightId: tl-west">
+  </a-entity>
+
+  <!-- Car 6 – Fast violator (runs red occasionally) -->
+  <a-entity
+    id="car6"
+    class="clickable vehicle"
+    gltf-model="#car-model"
+    position="-1 0 -90"
+    rotation="0 0 0"
+    scale="15 15 15"
+    shadow="cast: true"
+    car-driver="speed: 0.18; lane: NS; startZ: -90; axis: NS; lightId: tl-north; violator: true">
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       SCENERY / BUILDINGS
+       ══════════════════════════════════════════════ -->
+
+  <!-- Building cluster (NE corner) -->
+  <a-box position="20 5 -20"  width="14" height="10" depth="14" color="#c4a882" shadow="cast:true;receive:true"></a-box>
+  <a-box position="20 8 -20"  width="12" height="4"  depth="12" color="#b8997a"></a-box>
+  <a-box position="30 7 -30"  width="10" height="14" depth="10" color="#9fa8b0" shadow="cast:true"></a-box>
+  <a-box position="25 4 -35"  width="8"  height="8"  depth="8"  color="#d4a574" shadow="cast:true"></a-box>
+
+  <!-- Building cluster (SW corner) -->
+  <a-box position="-22 6 22"  width="14" height="12" depth="14" color="#9fa8b0" shadow="cast:true;receive:true"></a-box>
+  <a-box position="-30 4 28"  width="10" height="8"  depth="10" color="#c4a882" shadow="cast:true"></a-box>
+  <a-box position="-25 5 35"  width="8"  height="10" depth="8"  color="#b8997a" shadow="cast:true"></a-box>
+
+  <!-- Building cluster (NW corner) -->
+  <a-box position="-25 5 -25" width="12" height="10" depth="12" color="#d4a574" shadow="cast:true;receive:true"></a-box>
+  <a-box position="-30 7 -30" width="8"  height="14" depth="8"  color="#9fa8b0" shadow="cast:true"></a-box>
+
+  <!-- Building cluster (SE corner) -->
+  <a-box position="25 6 25"   width="14" height="12" depth="14" color="#c4a882" shadow="cast:true;receive:true"></a-box>
+  <a-box position="30 4 30"   width="10" height="8"  depth="10" color="#b8997a" shadow="cast:true"></a-box>
+
+  <!-- Sidewalk pavers -->
+  <a-plane position="15 0.015 0"   rotation="-90 0 0" width="20" height="200" color="#d1c9b8"></a-plane>
+  <a-plane position="-15 0.015 0"  rotation="-90 0 0" width="20" height="200" color="#d1c9b8"></a-plane>
+  <a-plane position="0 0.015 15"   rotation="-90 0 90" width="20" height="200" color="#d1c9b8"></a-plane>
+  <a-plane position="0 0.015 -15"  rotation="-90 0 90" width="20" height="200" color="#d1c9b8"></a-plane>
+
+  <!-- Trees -->
+  <a-entity position="13 0 -15">
+    <a-cylinder position="0 1 0" radius="0.2" height="2" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3 0" radius="1.5" color="#22c55e"></a-sphere>
+  </a-entity>
+  <a-entity position="13 0 15">
+    <a-cylinder position="0 1 0" radius="0.2" height="2" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3 0" radius="1.5" color="#16a34a"></a-sphere>
+  </a-entity>
+  <a-entity position="-13 0 -15">
+    <a-cylinder position="0 1 0" radius="0.2" height="2" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3 0" radius="1.5" color="#22c55e"></a-sphere>
+  </a-entity>
+  <a-entity position="-13 0 15">
+    <a-cylinder position="0 1 0" radius="0.2" height="2" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3 0" radius="1.4" color="#4ade80"></a-sphere>
+  </a-entity>
+  <a-entity position="14 0 -40">
+    <a-cylinder position="0 1 0" radius="0.2" height="2.5" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3.5 0" radius="1.8" color="#15803d"></a-sphere>
+  </a-entity>
+  <a-entity position="-14 0 40">
+    <a-cylinder position="0 1 0" radius="0.2" height="2" color="#7c4a1e"></a-cylinder>
+    <a-sphere   position="0 3 0" radius="1.6" color="#22c55e"></a-sphere>
+  </a-entity>
+
+  <!-- Street lamps -->
+  <a-entity position="12 0 -8">
+    <a-cylinder position="0 3 0" radius="0.06" height="6" color="#888"></a-cylinder>
+    <a-sphere   position="0 6 0" radius="0.25" color="#fff9c4" material="emissive: #ffff88; emissiveIntensity: 0.9"></a-sphere>
+    <a-light type="point" color="#fff8c0" intensity="0.6" distance="15" position="0 6 0"></a-light>
+  </a-entity>
+  <a-entity position="-12 0 8">
+    <a-cylinder position="0 3 0" radius="0.06" height="6" color="#888"></a-cylinder>
+    <a-sphere   position="0 6 0" radius="0.25" color="#fff9c4" material="emissive: #ffff88; emissiveIntensity: 0.9"></a-sphere>
+    <a-light type="point" color="#fff8c0" intensity="0.6" distance="15" position="0 6 0"></a-light>
+  </a-entity>
+  <a-entity position="12 0 8">
+    <a-cylinder position="0 3 0" radius="0.06" height="6" color="#888"></a-cylinder>
+    <a-sphere   position="0 6 0" radius="0.25" color="#fff9c4" material="emissive: #ffff88; emissiveIntensity: 0.9"></a-sphere>
+  </a-entity>
+  <a-entity position="-12 0 -8">
+    <a-cylinder position="0 3 0" radius="0.06" height="6" color="#888"></a-cylinder>
+    <a-sphere   position="0 6 0" radius="0.25" color="#fff9c4" material="emissive: #ffff88; emissiveIntensity: 0.9"></a-sphere>
+  </a-entity>
+
+  <!-- Police booth -->
+  <a-box position="0 0.75 0" width="1.5" height="1.5" depth="1.5" color="#1d4ed8" material="emissive: #1e3a8a; emissiveIntensity: 0.1"></a-box>
+  <a-box position="0 1.55 0" width="1.7" height="0.1" depth="1.7" color="#1e40af"></a-box>
+  <a-text value="POLICE" position="0 1 0.76" align="center" color="#ffffff" width="4" font="exo2bold"></a-text>
+
+  <!-- In-world Score HUD (visible in VR headset) -->
+  <a-entity id="vr-hud" position="0 3.5 -12">
+    <a-plane width="6" height="1.5" color="#000000" material="opacity: 0.8; transparent: true"></a-plane>
+    <a-text id="vr-score-text"
+      value="🚔 TRAFFIC POLICE TRAINING | Score: 0 | Time: 90s | Fines: 0"
+      position="0 0 0.01"
+      align="center"
+      color="#ffffff"
+      width="5.5">
     </a-text>
-      <a-box
-        position="-2 0.5 -3"
-        rotation="0 45 0"
-        src="#wood"
-        class="clickable"
-        animation="property: rotation; to: 0 405 0; loop: true; dur: 5000">
-      </a-box>
+  </a-entity>
 
-      <a-sphere
-        position="0 1.25 -5"
-        radius="1.25"
-        color="#EF2D5E"
-        class="clickable"
-        animation="property: position; to: 0 2.5 -5; dir: alternate; loop: true; dur: 1500">
-      </a-sphere>
+  <!-- ══════════════════════════════════════════════
+       CAMERA RIG + CONTROLS
+       ══════════════════════════════════════════════ -->
+  <a-entity id="rig" position="0 0 3">
 
-      <a-cylinder
-        position="2 0.75 -3"
-        radius="0.5"
-        height="1.5"
-        color="#FFC65D"
-        class="clickable"
-        animation="property: scale; to: 1.3 1.3 1.3; dir: alternate; loop: true; dur: 800">
-      </a-cylinder>
+    <!-- Camera with gaze cursor (works on desktop + mobile) -->
+    <a-camera id="main-camera" position="0 1.65 0" look-controls wasd-controls>
+      <a-cursor
+        id="gaze-cursor"
+        color="#facc15"
+        fuse="false"
+        raycaster="objects: .clickable; far: 80">
+      </a-cursor>
+    </a-camera>
 
-      <!-- Environment -->
-      <a-plane
-        position="0 0 -4"
-        rotation="-90 0 0"
-        width="20"
-        height="20"
-        src="#floor">
-      </a-plane>
+    <!-- VR Controllers (Meta Quest) -->
+    <a-entity
+      id="left-hand"
+      laser-controls="hand: left"
+      raycaster="objects: .clickable; far: 80; showLine: true"
+      line="color: rgba(100,150,255,0.6); opacity: 0.6">
+    </a-entity>
+    <a-entity
+      id="right-hand"
+      laser-controls="hand: right"
+      raycaster="objects: .clickable; far: 80; showLine: true"
+      line="color: rgba(100,150,255,0.6); opacity: 0.6">
+    </a-entity>
+  </a-entity>
 
-      <a-sky src="#city-sky"></a-sky>
+</a-scene>
 
-      <!-- UI Text -->
-      <a-text
-        value="Welcome to VR Workshop!"
-        position="0 3.5 -5"
-        align="center"
-        color="#FFFFFF"
-        width="8">
-      </a-text>
-
-      <a-text
-        value="Click objects to change color! (WASD to move, Mouse to look)"
-        position="0 0.5 -2"
-        align="center"
-        color="#AAAAAA"
-        width="5">
-      </a-text>
-
-     <!-- Interaction Script -->
-      <script>
-        AFRAME.registerComponent('click-change-color', {
-          init: function () {
-            this.el.addEventListener('click', function () {
-              var randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-              // Remove any texture so the color is visible (fixes the box)
-              this.removeAttribute('src');
-              this.setAttribute('material', 'src', '');
-              this.setAttribute('color', randomColor);
-            });
-          }
-        });
-
-        document.addEventListener('DOMContentLoaded', function () {
-          document.querySelectorAll('.clickable').forEach(function (obj) {
-            obj.setAttribute('click-change-color', '');
-          });
-        });
-      </script>
-
-    </a-scene>
-  </body>
-</html>         
+</body>
+</html>
