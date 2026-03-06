@@ -87,15 +87,9 @@ window.GAME = {
     },
 
     _updateHUD() {
-        const sv = document.getElementById('score-val');
-        const tv = document.getElementById('timer-val');
-        const fv = document.getElementById('fines-val');
-        if (sv) sv.textContent = this.score;
-        if (tv) {
-            tv.textContent = this.timeLeft;
-            tv.style.color = this.timeLeft <= 15 ? '#f87171' : '#facc15';
-        }
-        if (fv) fv.textContent = this.fines;
+        document.querySelector('#score-val').textContent = this.score;
+        document.querySelector('#timer-val').textContent = this.timeLeft;
+        document.querySelector('#fines-val').textContent = this.fines;
 
         // Update in-world VR HUD
         const vrText = document.getElementById('vr-score-text');
